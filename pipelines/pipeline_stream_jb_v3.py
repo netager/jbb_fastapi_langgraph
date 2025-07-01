@@ -1,10 +1,12 @@
 import requests
 import json
 from typing import List, Union, Generator, Iterator
-try:
-    from pydantic.v1 import BaseModel
-except Exception:
-    from pydantic import BaseModel
+
+# try:
+#     from pydantic.v1 import BaseModel
+# except Exception:
+#     from pydantic import BaseModel
+from pydantic import BaseModel
 
 
 class Pipeline:
@@ -35,14 +37,17 @@ class Pipeline:
         }
         data = {
             "question": user_message,
-            "context": "",
+            "context": [],
             "answer": "",
             "messages": [[msg['role'], msg['content']] for msg  in messages],
             "relevance": ""
             }
 
-        print(f'[pipeline_stream.py] user_message: {user_message}')
-        print(f'[pipeline_stream.py] messages: {messages}')
+        print(f'[pipeline_stream_jb.py] (openwebui) user_message: {user_message}')
+        print(f'[pipeline_stream_jb.py] (openwebui) messages: {messages}')
+        print(f'[pipeline_stream_jb.py] (data) question: {data["question"]}')
+        print(f'[pipeline_stream_jb.py] (data) messages: {data["messages"]}')
+
         # print("data",data)
         
         response = requests.post(url, json=data, headers=headers, stream=True)

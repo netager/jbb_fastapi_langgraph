@@ -30,12 +30,10 @@ async def stream(inputs: State):
             async for event in graph.astream(input=inputs, stream_mode="messages"):
                 # print(f"\nReceived event: {event}\n")
                 # get first element of tuple
-                print("Test .....................")
                 # print(f"\nReceived event[0]['content']: {event[0]['content']}\n")
             
                 message = message_chunk_to_message(event[0])
                 # print(f"\nConverted event: {message}\n")
-                print("Test1 ....................")
                 yield convert_to_openai_messages(message)['content']
         except Exception as e:
             print(f"An error occurred: {e}")

@@ -35,7 +35,7 @@ pdf_chain = pdf.chain
 
 class State(TypedDict):
     question: Annotated[str, "Question"]  # 질문(누적되는 list)
-    context: Annotated[str, "Context"]  # 문서의 검색 결과
+    context: Annotated[list, "Context"]  # 문서의 검색 결과
     answer: Annotated[str, "Answer"]  # 답변
     messages: Annotated[list, add_messages]  # 메시지(누적되는 list)
     relevance: Annotated[str, "Relevance"]  # 관련성
@@ -44,9 +44,13 @@ class State(TypedDict):
 def print_state(state, func_name) -> None:
     print(f"- [{func_name}]-------------------------------------")
     print(f"question: {state['question']}")
-    print(f"context: {state['context'][:20]}")
-    print(f"answer: {state['answer'][:20]}")
-    print(f"messages: {len(state['messages'])}")
+    # print(f"context: {type(state['context'])}, {len(state['context'])}, {state['context']}")
+    for context in state['context']:
+        # print(f"context: {context['page_context']}")
+        print(f"context: {context.metadata['source']}")
+
+    # print(f"answer: {state['answer'][:20]}")
+    print(f"messages: {state['messages'][-1]}")
     print(f"relevance: {state['relevance']}")
     print("--------------------------------------")
 
@@ -67,7 +71,7 @@ def retrieve_document(state: State) -> State:
     # print(f'[langgraph_agent_jp][retrieve_document] {retrieved_docs}')   # TODO: Delete
 
     # 검색된 문서를 형식화합니다.(프롬프트 입력으로 넣어주기 위함)
-    retrieved_docs = format_docs(retrieved_docs)
+    # retrieved_docs = format_docs(retrieved_docs)
 
     # 검색된 문서를 context 키에 저장합니다.
     return State(context=retrieved_docs)
@@ -77,8 +81,8 @@ def llm_answer(state: State) -> State:
     print_state(state, 'llm_answer')
 
     latest_question = state["question"]
-    # context = format_docs(state["context"])
-    context = state["context"]
+    context = format_docs(state["context"])
+    # context = state["context"]
 
     # print(f'[langgraph_agent_jp][llm_answer()] <{latest_question}>{type(context)}')
     # print(f'[langgraph_agent_jp][llm_answer()] context: {context}')
@@ -93,43 +97,46 @@ def llm_answer(state: State) -> State:
             "chat_history": []
         }
     )
-    print(f'[langgraph_agent_jp][llm_answer()] pdf_chain.invoke() End')
 
-    # # print(f"[langgraph_agent_jb][llm_answer()] context: {context}")
-    # search_results = context
-    # print(f"[langgraph_agent_jb][llm_answer()] search_results: {search_results}")
+    search_results = state['context']
+    print(f"[langgraph_agent_jb][llm_answer()] search_results: {search_results}")
 
     # if not search_results:
     #     logger.warning("No relevant documents found in search results.")
             
-    # linked_docs = []
-    # base_url = "https://jabis.jbbank.co.kr/jabis_pdf_view"
+    linked_docs = []
+    base_url = "https://jabis.jbbank.co.kr/jabis_pdf_view"
     
-    # for search_result in search_results:
-    #     # if search_result[1] < 0.8:  # relevance threshold
-    #     params = {
-    #         "source": search_result.metadata["source"],
-    #         "title": search_result.metadata["title"],
-    #         "page": search_result.metadata["page"] + 1,
-    #     }
-    #     url_with_params = base_url + "?" + urlencode(params)
+    for search_result in search_results:
+        # if search_result[1] < 0.8:  # relevance threshold
+        params = {
+            "source": search_result.metadata["source"],
+            "title": search_result.metadata["title"],
+            "page": search_result.metadata["page"] + 1,
+        }
+        url_with_params = base_url + "?" + urlencode(params)
         
-    #     linked_docs.append(
-    #         f"👉 [{params['title']}]({url_with_params}) [pages]: {params['page']}"
-    #     )
+        linked_docs.append(
+            f"👉 [{params['title']}]({url_with_params}) [pages]: {params['page']}"
+        )
 
     # print(f"[langgraph_agent_jb][llm_answer()] linked_docs: {linked_docs}")
        
-    # response = response + "\n\n 📖 관련 문서 보기\n\n" + "\n\n".join(linked_docs)
+    response = response + "\n\n 📖 관련 문서 보기\n\n" + "\n\n".join(linked_docs)
 
+    print(f"response: {response}")
+    # 생성된 답변, (유저의 질문, 답변) 메시지를 상태에 저장합니다.
+    return {
+        "answer": response,
+        "messages": [("assistant", response)]
+    }
 
-    # # 생성된 답변, (유저의 질문, 답변) 메시지를 상태에 저장합니다.
     # return {
     #     "answer": response,
     #     "messages": [("user", latest_question), ("assistant", response)]
     # }
 
-    return {"messages": [response]}        
+    # return {"messages": [response]}        
     # return {"messages": [llm.invoke(state["messages"])]}
 
 # 그래프 정의
